@@ -56,7 +56,27 @@ async function run() {
 
     // medical-camps api
     app.get('/camps', async(req, res)=>{
-        const cursor = medicalCollection.find();
+        const search = req.query.search;
+        const sort = req.query.sort;
+        let sortCriteria = {};
+
+        if(sort === 'Most Registered'){
+            sortCriteria = {participantCount: -1}
+        }
+        else if(sort === 'Camp Fees'){
+            sortCriteria = {fees: 1}
+        }else if(sort === 'Alphabetical Order'){
+            sortCriteria = {campName: 1}
+        }
+
+
+        const cursor = medicalCollection.find({
+            $or: [
+                {campName: {$regex:search, $options: 'i'}},
+                {location: {$regex:search, $options: 'i'}},
+                {dateTime: {$regex:search, $options: 'i'}},
+            ],
+        }).sort(sortCriteria);
         const result = await cursor.toArray();
         res.send(result);
     })

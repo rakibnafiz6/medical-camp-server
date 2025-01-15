@@ -55,6 +55,12 @@ async function run() {
     })
 
     // medical-camps api
+    app.get('/camps', async(req, res)=>{
+        const cursor = medicalCollection.find();
+        const result = await cursor.toArray();
+        res.send(result);
+    })
+
     app.post('/camps', async(req, res)=>{
         const camps = req.body;
         const result = await medicalCollection.insertOne(camps)

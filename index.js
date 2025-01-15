@@ -29,8 +29,17 @@ async function run() {
     await client.connect();
 
     const usersCollection = client.db("medicalDB").collection('users');
+    const medicalCollection = client.db("medicalDB").collection('camps');
 
     // users related api
+
+    // app.get('/users', async(req, res)=>{
+    //     const cursor = usersCollection.find();
+    //     const result = await cursor.toArray();
+    //     res.send(result);
+    // })
+
+
     app.post('/users/:email', async(req, res)=>{
         const email = req.params.email;
         const query = {email}
@@ -45,6 +54,12 @@ async function run() {
         res.send(result);
     })
 
+    // medical-camps api
+    app.post('/camps', async(req, res)=>{
+        const camps = req.body;
+        const result = await medicalCollection.insertOne(camps)
+        res.send(result);
+    })
 
 
     // Send a ping to confirm a successful connection

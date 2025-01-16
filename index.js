@@ -30,6 +30,7 @@ async function run() {
 
     const usersCollection = client.db("medicalDB").collection('users');
     const medicalCollection = client.db("medicalDB").collection('camps');
+    const joinCollection = client.db("medicalDB").collection('join');
 
     // users related api
 
@@ -92,6 +93,13 @@ async function run() {
     app.post('/camps', async(req, res)=>{
         const camps = req.body;
         const result = await medicalCollection.insertOne(camps)
+        res.send(result);
+    })
+
+    // join related api
+    app.post('/joins', async(req, res)=>{
+        const joinUser = req.body;
+        const result = await joinCollection.insertOne(joinUser)
         res.send(result);
     })
 

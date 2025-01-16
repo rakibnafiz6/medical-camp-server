@@ -55,7 +55,7 @@ async function run() {
         res.send(result);
     })
 
-    // medical-camps api
+    // medical-camps related api
     app.get('/camps', async(req, res)=>{
         const search = req.query.search;
         const sort = req.query.sort;
@@ -87,6 +87,13 @@ async function run() {
         const id = req.params.id;
         const query = {_id: new ObjectId(id)}
         const result = await medicalCollection.findOne(query)
+        res.send(result);
+    })
+
+    // highs participant
+    app.get('/high-participant', async(req, res)=>{
+        const cursor = medicalCollection.find().sort({participantCount: -1}).limit(6);
+        const result = await cursor.toArray();
         res.send(result);
     })
 

@@ -100,6 +100,11 @@ async function run() {
     app.post('/joins', async(req, res)=>{
         const joinUser = req.body;
         const result = await joinCollection.insertOne(joinUser)
+
+        const filter = {_id: new ObjectId(joinUser.id)}
+        const update = { $inc: {participantCount: 1}}
+        const updateParticipantCount = await medicalCollection.updateOne(filter, update)
+
         res.send(result);
     })
 

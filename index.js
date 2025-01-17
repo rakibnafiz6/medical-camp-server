@@ -142,6 +142,14 @@ async function run() {
             res.send(result);
         })
 
+        // camp delete
+        app.delete('/delete-camp/:id', async(req, res)=>{
+            const id = req.params.id;
+            const query = {_id: new ObjectId(id)}
+            const result = await medicalCollection.deleteOne(query)
+            res.send(result);
+        })
+
         // join related api
         app.post('/joins', async (req, res) => {
             const joinUser = req.body;

@@ -34,7 +34,9 @@ async function run() {
 
     // users related api
 
-    // app.get('/users', async(req, res)=>{
+    // app.get('/organizer/:email', async(req, res)=>{
+    //     const email = req.params.email;
+    //     const query = {email}
     //     const cursor = usersCollection.find();
     //     const result = await cursor.toArray();
     //     res.send(result);
@@ -94,6 +96,13 @@ async function run() {
     app.get('/high-participant', async(req, res)=>{
         const cursor = medicalCollection.find().sort({participantCount: -1}).limit(6);
         const result = await cursor.toArray();
+        res.send(result);
+    })
+
+    // organizer manage camps
+    app.get('/manage-camps', async(req, res)=>{
+        const cursor = medicalCollection.find()
+        const result = await cursor.toArray()
         res.send(result);
     })
 

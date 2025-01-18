@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const app = express();
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const port = process.env.PORT || 5000;
 
 
@@ -31,6 +32,7 @@ async function run() {
         const usersCollection = client.db("medicalDB").collection('users');
         const medicalCollection = client.db("medicalDB").collection('camps');
         const joinCollection = client.db("medicalDB").collection('join');
+        const paymentCollection = client.db("medicalDB").collection('payment');
 
         // users related api
 
@@ -132,8 +134,8 @@ async function run() {
                 }
             }
 
-         const result = await medicalCollection.updateOne(filter, updateDoc,options)
-         res.send(result);
+            const result = await medicalCollection.updateOne(filter, updateDoc, options)
+            res.send(result);
         })
 
         app.post('/camps', async (req, res) => {
@@ -143,9 +145,9 @@ async function run() {
         })
 
         // camp delete
-        app.delete('/delete-camp/:id', async(req, res)=>{
+        app.delete('/delete-camp/:id', async (req, res) => {
             const id = req.params.id;
-            const query = {_id: new ObjectId(id)}
+            const query = { _id: new ObjectId(id) }
             const result = await medicalCollection.deleteOne(query)
             res.send(result);
         })
@@ -162,18 +164,66 @@ async function run() {
             res.send(result);
         })
 
-        app.get('/register/:email', async(req, res)=>{
+        app.get('/register/:email', async (req, res) => {
             const email = req.params.email;
-            const query = {participantEmail: email}
+            const query = { participantEmail: email }
             const result = await joinCollection.find(query).toArray();
             res.send(result);
         })
 
-        app.delete('/register/:id', async(req, res)=>{
+        app.delete('/register/:id', async (req, res) => {
             const id = req.params.id;
-            const query = {_id: new ObjectId(id)}
+            const query = { _id: new ObjectId(id) }
             const result = await joinCollection.deleteOne(query)
             res.send(result);
+        })
+
+        // payment intent
+        app.post('/create-payment-intent', async (req, res) => {
+            const { fees } = req.body;
+
+            if (!fees) {
+                return res.status(400).send({ error: "Fees is required!" });
+            }
+
+            const amount = parseInt(fees * 100);
+
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount,
+                currency: 'usd',
+                payment_method_types: ['card'],
+            });
+
+            res.send({ clientSecret: paymentIntent.client_secret });
+        });
+
+        // payment status update
+        app.post('/update-payment-status/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) }
+            const joinData = await joinCollection.findOne(filter);
+
+            const updateDoc = {
+                $set: {
+                    paymentStatus: "paid",
+                }
+            }
+            const result = await joinCollection.updateOne(filter, updateDoc)
+
+            const paymentDetails = {
+                campName: joinData.campName,
+                campFees: joinData.campFees,
+                paymentStatus: "paid",
+                confirmationStatus: joinData.confirmationStatus,
+                transactionId: req.body.transactionId,
+                email: req.body.email,
+            };
+            const paymentResult = await paymentCollection.insertOne(paymentDetails);
+
+
+
+            res.send({result, paymentResult});
+
         })
 
 

@@ -178,6 +178,7 @@ async function run() {
             res.send(result);
         })
 
+        // payment related api
         // payment intent
         app.post('/create-payment-intent', async (req, res) => {
             const { fees } = req.body;
@@ -224,6 +225,15 @@ async function run() {
 
             res.send({result, paymentResult});
 
+        })
+
+        // payment history
+        app.get('/payment-history/:email', async(req, res)=>{
+            const email = req.params.email;
+            const query = {email}
+            const cursor = paymentCollection.find(query)
+            const result = await cursor.toArray();
+            res.send(result);
         })
 
 

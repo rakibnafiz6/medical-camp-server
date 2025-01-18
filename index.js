@@ -171,6 +171,26 @@ async function run() {
             res.send(result);
         })
 
+        // manage register
+        app.get('/manage-register', async(req, res)=>{
+            const cursor = joinCollection.find()
+            const result = await cursor.toArray();
+            res.send(result);
+        })
+
+        // manage registe confirmationStatus update
+        app.patch('/confirmation-status/:id', async(req, res)=>{
+            const id = req.params.id;
+            const filter = {_id: new ObjectId(id)}
+            const updateConfirmation ={
+                $set:{
+                    confirmationStatus: "Confirmed",
+                }
+            }
+            const result = await joinCollection.updateOne(filter, updateConfirmation)
+            res.send(result);
+        })
+
         app.delete('/register/:id', async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) }

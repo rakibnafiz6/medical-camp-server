@@ -33,6 +33,7 @@ async function run() {
         const medicalCollection = client.db("medicalDB").collection('camps');
         const joinCollection = client.db("medicalDB").collection('join');
         const paymentCollection = client.db("medicalDB").collection('payment');
+        const feedbackCollection = client.db("medicalDB").collection('feedback');
 
         // users related api
 
@@ -226,7 +227,7 @@ async function run() {
             res.send({ clientSecret: paymentIntent.client_secret });
         });
 
-        // payment status update
+        // payment status update-----Todo:kaj ase
         app.post('/update-payment-status/:id', async (req, res) => {
             const id = req.params.id;
             const filter = { _id: new ObjectId(id) }
@@ -246,6 +247,7 @@ async function run() {
                 confirmationStatus: joinData.confirmationStatus,
                 transactionId: req.body.transactionId,
                 email: req.body.email,
+                id: id,
             };
             const paymentResult = await paymentCollection.insertOne(paymentDetails);
 
@@ -261,6 +263,19 @@ async function run() {
             const query = {email}
             const cursor = paymentCollection.find(query)
             const result = await cursor.toArray();
+            res.send(result);
+        })
+
+        // feedback related apii
+        app.post('/feedbacks', async(req, res)=>{
+            const feedbackData = req.body;
+            const result = await feedbackCollection.insertOne(feedbackData)
+            res.send(result);
+        })
+
+        app.get('/feedback-rating', async(req, res)=>{
+            const cursor = feedbackCollection.find()
+            const result = await cursor.toArray()
             res.send(result);
         })
 

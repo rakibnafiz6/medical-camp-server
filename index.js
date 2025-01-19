@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const app = express();
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
@@ -35,21 +36,66 @@ async function run() {
         const paymentCollection = client.db("medicalDB").collection('payment');
         const feedbackCollection = client.db("medicalDB").collection('feedback');
 
-        // users related api
+        // jwt related api
+        app.post('/jwt', async(req, res)=>{
+            const user = req.body;
+            const token = jwt.sign(user, process.env.ACCESS_SECRET_TOKEN, {
+                expiresIn: '1d'});
+                res.send({token});
+        })
 
-        // app.get('/organizer/:email', async(req, res)=>{
-        //     const email = req.params.email;
-        //     const query = {email}
-        //     const cursor = usersCollection.find();
-        //     const result = await cursor.toArray();
+        // middlewares
+        const verifyToken = (req, res, next)=>{
+            if(!req.headers.authorization){
+                return res.status(401).send({message: 'unauthorized access'});
+            }
+            const token = req.headers.authorization.split(' ')[1];
+            jwt.verify(token, process.env.ACCESS_SECRET_TOKEN, (err, decoded)=>{
+                if(err){
+                    return res.status(401).send({message: 'unauthorized access'});
+                }
+                req.decoded = decoded;
+                next();
+            })
+        }
+
+
+
+
+
+        // users related api
+        app.get('/participant-profile/:email', async(req, res)=>{
+            const email = req.params.email;
+            const query = {email}
+            const result = await usersCollection.findOne(query);
+            res.send(result);
+        })
+
+        // app.get('/participant/:id', async(req, res)=>{
+        //     const id = req.params.id;
+        //     const query = {_id: new ObjectId(id)}
+        //     const result = await usersCollection.findOne(query);
         //     res.send(result);
         // })
 
+        // app.put('/update-participant/:id', async(req, res)=>{
+        //     const userData = req.body;
+        //     const id = req.params.id;
+        //     const filter = {_id: new ObjectId(id)}
+        //     const updatedUserData ={
+        //         $set:{
+        //             name: userData.name,
+        //             image: userData.image,
+        //             email: userData.email,
+        //         }
+        //     }
+        //     const result = await usersCollection.updateOne(filter,updatedUserData)
+        //     res.send(result);
+        // })
 
-        app.post('/users/:email', async (req, res) => {
-            const email = req.params.email;
-            const query = { email }
+        app.post('/users', async (req, res) => {
             const user = req.body;
+            const query = { email: user.email }
 
             const isExist = await usersCollection.findOne(query);
             if (isExist) {
@@ -103,7 +149,7 @@ async function run() {
         })
 
         // organizer manage camps
-        app.get('/manage-camps', async (req, res) => {
+        app.get('/manage-camps', verifyToken, async (req, res) => {
             const cursor = medicalCollection.find()
             const result = await cursor.toArray()
             res.send(result);
@@ -166,6 +212,14 @@ async function run() {
         })
 
         app.get('/register/:email', async (req, res) => {
+            const email = req.params.email;
+            const query = { participantEmail: email }
+            const result = await joinCollection.find(query).toArray();
+            res.send(result);
+        })
+
+        // analytics apii
+        app.get('/analytics/:email', async (req, res) => {
             const email = req.params.email;
             const query = { participantEmail: email }
             const result = await joinCollection.find(query).toArray();

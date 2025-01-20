@@ -28,7 +28,7 @@ const client = new MongoClient(uri, {
 async function run() {
     try {
         // Connect the client to the server	(optional starting in v4.7)
-        await client.connect();
+        // await client.connect();
 
         const usersCollection = client.db("medicalDB").collection('users');
         const medicalCollection = client.db("medicalDB").collection('camps');
@@ -62,7 +62,6 @@ async function run() {
 
 
 
-
         // users related api
         app.get('/participant-profile/:email', async(req, res)=>{
             const email = req.params.email;
@@ -71,27 +70,6 @@ async function run() {
             res.send(result);
         })
 
-        // app.get('/participant/:id', async(req, res)=>{
-        //     const id = req.params.id;
-        //     const query = {_id: new ObjectId(id)}
-        //     const result = await usersCollection.findOne(query);
-        //     res.send(result);
-        // })
-
-        // app.put('/update-participant/:id', async(req, res)=>{
-        //     const userData = req.body;
-        //     const id = req.params.id;
-        //     const filter = {_id: new ObjectId(id)}
-        //     const updatedUserData ={
-        //         $set:{
-        //             name: userData.name,
-        //             image: userData.image,
-        //             email: userData.email,
-        //         }
-        //     }
-        //     const result = await usersCollection.updateOne(filter,updatedUserData)
-        //     res.send(result);
-        // })
 
         app.post('/users', async (req, res) => {
             const user = req.body;
@@ -133,6 +111,7 @@ async function run() {
             res.send(result);
         })
 
+
         // camp-details
         app.get('/camps-details/:id', async (req, res) => {
             const id = req.params.id;
@@ -150,7 +129,15 @@ async function run() {
 
         // organizer manage camps
         app.get('/manage-camps', verifyToken, async (req, res) => {
-            const cursor = medicalCollection.find()
+            const search = req.query.search || '';
+            const query = {
+                $or: [
+                    { campName: { $regex: search, $options: 'i' } },
+                    { dateTime: { $regex: search, $options: 'i' } },
+                    { professionalName: { $regex: search, $options: 'i' } },
+                ]
+            }
+            const cursor = medicalCollection.find(query)
             const result = await cursor.toArray()
             res.send(result);
         })
@@ -163,7 +150,7 @@ async function run() {
             res.send(result);
         })
 
-        app.put('/camps-update/:id', async (req, res) => {
+        app.put('/camps-update/:id', verifyToken, async (req, res) => {
             const id = req.params.id;
             const campData = req.body;
             const filter = { _id: new ObjectId(id) }
@@ -185,14 +172,14 @@ async function run() {
             res.send(result);
         })
 
-        app.post('/camps', async (req, res) => {
+        app.post('/camps', verifyToken, async (req, res) => {
             const camps = req.body;
             const result = await medicalCollection.insertOne(camps)
             res.send(result);
         })
 
         // camp delete
-        app.delete('/delete-camp/:id', async (req, res) => {
+        app.delete('/delete-camp/:id', verifyToken, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) }
             const result = await medicalCollection.deleteOne(query)
@@ -211,14 +198,22 @@ async function run() {
             res.send(result);
         })
 
+        // register camps
         app.get('/register/:email', async (req, res) => {
             const email = req.params.email;
-            const query = { participantEmail: email }
+            const search = req.query.search;
+            const query = { participantEmail: email,
+                $or: [
+                    { campName: { $regex: search, $options: 'i' } },
+                    { campFees: { $regex: search, $options: 'i' } },
+                    { paymentStatus: { $regex: search, $options: 'i' } },
+                ]
+             }
             const result = await joinCollection.find(query).toArray();
             res.send(result);
         })
 
-        // analytics apii
+        // analytics api
         app.get('/analytics/:email', async (req, res) => {
             const email = req.params.email;
             const query = { participantEmail: email }
@@ -228,30 +223,43 @@ async function run() {
 
         // manage register
         app.get('/manage-register', async(req, res)=>{
-            const cursor = joinCollection.find()
+            const search = req.query.search || '';
+            const query = {
+                $or: [
+                    { campName: { $regex: search, $options: 'i' } },
+                    { campFees: { $regex: search, $options: 'i' } },
+                    { paymentStatus: { $regex: search, $options: 'i' } },
+                ]
+            }
+            const cursor = joinCollection.find(query)
             const result = await cursor.toArray();
             res.send(result);
         })
 
-        // manage registe confirmationStatus update
+        // manage register confirmationStatus update
         app.patch('/confirmation-status/:id', async(req, res)=>{
             const id = req.params.id;
             const filter = {_id: new ObjectId(id)}
+            const query = {id: id}
             const updateConfirmation ={
                 $set:{
                     confirmationStatus: "Confirmed",
                 }
             }
+
             const result = await joinCollection.updateOne(filter, updateConfirmation)
-            res.send(result);
+            const paymentConfirmation = await paymentCollection.updateOne(query, updateConfirmation)
+            res.send({result, paymentConfirmation});
         })
 
-        // registation cancel organizer
+        // registration cancel organizer
         app.delete('/delete-register/:id', async(req, res)=>{
             const id = req.params.id;
             const query = {_id: new ObjectId(id)}
+            const filter = {id: id}
             const result = await joinCollection.deleteOne(query)
-            res.send(result);
+            const payDelete = await paymentCollection.deleteOne(filter)
+            res.send({result, payDelete});
         })
 
         app.delete('/register/:id', async (req, res) => {
@@ -281,7 +289,7 @@ async function run() {
             res.send({ clientSecret: paymentIntent.client_secret });
         });
 
-        // payment status update-----Todo:kaj ase
+        // payment status update
         app.post('/update-payment-status/:id', async (req, res) => {
             const id = req.params.id;
             const filter = { _id: new ObjectId(id) }
@@ -314,7 +322,14 @@ async function run() {
         // payment history
         app.get('/payment-history/:email', async(req, res)=>{
             const email = req.params.email;
-            const query = {email}
+            const search = req.query.search;
+            const query = {email,
+                $or: [
+                    { campName: { $regex: search, $options: 'i' } },
+                    { campFees: { $regex: search, $options: 'i' } },
+                    { paymentStatus: { $regex: search, $options: 'i' } },
+                ]
+            }
             const cursor = paymentCollection.find(query)
             const result = await cursor.toArray();
             res.send(result);
@@ -335,7 +350,7 @@ async function run() {
 
 
         // Send a ping to confirm a successful connection
-        await client.db("admin").command({ ping: 1 });
+        // await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
         // Ensures that the client will close when you finish/error
